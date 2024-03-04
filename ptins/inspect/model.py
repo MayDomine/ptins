@@ -1,5 +1,4 @@
 import torch
-from .. import nccl
 import fnmatch
 
 @torch.no_grad()
