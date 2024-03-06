@@ -89,6 +89,7 @@ class inspector:
     def inspect_weight(self):
         model = self.model
         summary = inspect_model(model, "*")
+        summary = format_summary(summary) 
         return summary
 
     def get_summary(self):
