@@ -11,7 +11,6 @@ def main():
         packages=find_packages(),
         url="https://github.com/MayDomine/ptins",
         install_requires=[
-            "torch",
         ],
         keywords="pytorch, debug, inspect, hook",
         license='Apache 2.0',
