@@ -60,8 +60,6 @@ class inspector:
     def write(self, filename):
         if os.path.exists(filename) and os.path.isdir(filename):
             dirname = filename
-            if not os.path.exists(dirname):
-                os.mkdir(dirname)
             log_file = os.path.join(dirname,"/ins_log.txt")
         else:
             log_file = filename
@@ -83,7 +81,7 @@ class inspector:
             if len(layer._modules) !=0:
                 if not pre_hook:
                     layer.register_forward_hook(hook_func)
-                self.register_ins_hook(self, model, map_func, log_key, layers, pre_hook=pre_hook)
+                self.register_ins_hook(model, map_func, log_key, layers, pre_hook=pre_hook)
                 if pre_hook:
                     layer.register_forward_pre_hook(hook_func)
 
