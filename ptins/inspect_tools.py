@@ -27,13 +27,13 @@ class inspector:
     def __init__(self, model) -> None:
         self._ins_item = []
         self.model = model
-        self.inspect_weight = True
+        self._inspect_weight = False 
         self._log = InsLogger()
 
     def inspect(self, option=Literal[ "input", "output", "weight" ], attr=Literal["mean, std, max, min, shape, dtype"]):
         model =self.model
         if attr in ['mean', 'std', 'max', 'min']: 
-            map_func = lambda x: getattr(x, attr)()
+            map_func = lambda x: getattr(x, attr)().item()
         elif attr == "shape":
             map_func = lambda x: list(x.shape)
         map_func = (attr, map_func)
@@ -42,7 +42,7 @@ class inspector:
         elif option == "input":
             self.register_ins_hook(model, map_func, log_key="input", pre_hook=True)
         elif option == "weight":
-            self.inspect_weight = True
+            self._inspect_weight = True
 
     
     def inspect_weight(self):
@@ -53,7 +53,8 @@ class inspector:
 
     def get_summary(self):
         ins_log = self._log.log()
-        weight = self.inspect_weight(self.model)
+        if self._inspect_weight:
+            weight = self.inspect_weight(self.model)
         return ins_log, weight 
 
     def write(self, filename):
