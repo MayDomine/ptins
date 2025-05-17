@@ -36,9 +36,9 @@ def format_summary(summary : List[Dict[str, Any]]) -> str:
     ret = []
 
     for dic in summary:
-        for k in dic.keys():
+        for k in sorted(dic.keys()):
             headers.add(k)
-    headers = list(headers)
+    headers = sorted(list(headers))
     key_order = ["name", "shape"]
     for k in key_order[::-1]:
         if k in headers:
@@ -46,7 +46,7 @@ def format_summary(summary : List[Dict[str, Any]]) -> str:
             headers = [k] + headers
     max_name_len = max([len("name")] + [len(item["name"]) for item in summary]) + 4
     key_lens = [max_name_len, 20] 
-    headers_length = key_lens + [10 for i in range(len(headers)-2)]
+    headers_length = key_lens + [20 for i in range(len(headers)-2)]
     ret.append( format_line(headers, headers_length) )
     for item in summary:
         values = [ item_formater(item[name]) for name in headers ]

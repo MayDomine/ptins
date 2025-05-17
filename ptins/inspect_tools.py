@@ -1,9 +1,6 @@
 from contextlib import contextmanager
 import sys
-from typing import Optional, Union, List, Tuple, Literal
-from .ins_logger import InsLogger
-from .inspect import inspect_model, format_summary
-import os
+from inspect_model import inspect_model, format_summary
 log_file = set()
 @contextmanager
 def custom_redirection(fileobj):
@@ -23,94 +20,40 @@ def custom_redirection(fileobj):
         sys.stdout = old
         file_handle.close()
 
-class inspector:
-    def __init__(self, model) -> None:
-        self._ins_item = []
-        self.model = model
-        self._inspect_weight = False 
-        self._log = InsLogger()
+def look_var(layer, _, output):
+    try:
+        print(f"{layer.__name__}: {output.min()}")
+    except Exception:
+        print(f"{layer.__name__}: {output[0].min()}")
 
-    def inspect(self, option=Literal[ "input", "output", "weight" ], attr=Literal["mean, std, max, min, shape, dtype"]):
-        model =self.model
-        if attr in ['mean', 'std', 'max', 'min']: 
-            map_func = lambda x: getattr(x, attr)().item()
-        elif attr == "shape":
-            map_func = lambda x: list(x.shape)
-        map_func = (attr, map_func)
-        if option == "output":
-            self.register_ins_hook(model, map_func, log_key="output")
-        elif option == "input":
-            self.register_ins_hook(model, map_func, log_key="input", pre_hook=True)
-        elif option == "weight":
-            self._inspect_weight = True
 
-    
-    def inspect_weight(self):
-        model = self.model
-        summary = inspect_model(model, "*")
-        summary = format_summary(summary) 
-        return summary
-
-    def get_summary(self):
-        ins_log = self._log.log()
-        if self._inspect_weight:
-            weight = self.inspect_weight(self.model)
-        return ins_log, weight 
-
-    def write(self, filename):
-        if os.path.exists(filename) and os.path.isdir(filename):
-            dirname = filename
-            log_file = os.path.join(dirname,"/ins_log.txt")
-        else:
-            log_file = filename
-
-        self._log.write(log_file)
-        if self.inspect_weight:
-            weight_file = dirname+"/weight_summary.txt"
-            with open(weight_file, "w") as f:
-                f.write(format_summary(self.inspect_weight()))
-
-    def register_ins_hook(self, model, map_func, log_key, layers=set(), pre_hook=False):
-        for key,layer in model.named_modules():
-            layer.__name__ = key
-            hook_func = self.hook_wrapper(map_func, log_key, pre_hook=pre_hook)
-            if layer not in layers:
-                layers.add(layer)
-            else:
-                continue
-            if len(layer._modules) !=0:
-                if not pre_hook:
-                    layer.register_forward_hook(hook_func)
-                self.register_ins_hook(model, map_func, log_key, layers, pre_hook=pre_hook)
-                if pre_hook:
-                    layer.register_forward_pre_hook(hook_func)
-
-            else:
-                if pre_hook:
-                    layer.register_forward_pre_hook(hook_func)
-                else:
-                    layer.register_forward_hook(hook_func)
-
-    def hook_wrapper(self, map_func, key, pre_hook=False):
-
-        def _get_tuple(x):
-            key_2 = map_func[0]
-            return (key+"_"+key_2, map_func[1](x))
-
-        def _post_hook(layer, _, output):
+def look_inp_weight(look_inp,look_weight):
+    def look_inp_func(layer, inp):
+        if look_inp:
             try:
-                self._log(layer.__name__, _get_tuple(output))
-            except:
-                self._log(layer.__name__, _get_tuple(output[0]))
+                print(f"{layer.__name__}: {inp.min()}")
+            except Exception:
+                print(f"{layer.__name__}: {inp[0].min()}")
+        if look_weight:
+            print(f"{layer.__name__} weight: {layer._parameters}")
+    return look_inp_func
 
-        def _pre_hook(layer, inp):
-            try:
-                self._log(layer.__name__, _get_tuple(inp))
-            except:
-                self._log(layer.__name__, _get_tuple(inp[0]))
-        
-        if pre_hook:
-            return _pre_hook
+def lookup_output(model,layers=set(), look_input=False, look_weight=False):
+    for key,layer in model.named_modules():
+        layer.__name__ = key
+        if layer not in layers:
+            layers.add(layer)
         else:
-            return _post_hook
+            continue
+        if len(layer._modules) !=0:
+            layer.register_forward_hook(look_var)
+            lookup_output(layer,layers,look_input=look_input,look_weight=look_weight)
+            layer.register_forward_pre_hook(look_inp_weight(look_input,look_weight))
+        else:
+            layer.register_forward_hook(look_var)
+            layer.register_forward_pre_hook(look_inp_weight(look_input,look_weight))
 
+def inspect_weight(model):
+    summary = inspect_model(model, "*")
+    summary = format_summary(summary) 
+    return summary
